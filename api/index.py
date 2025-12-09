@@ -36,7 +36,7 @@ class handler(BaseHTTPRequestHandler):
             
             try:
                 # Using Gemini API via curl
-                api_key = os.environ.get('GEMINI_API_KEY', 'AIzaSyAw8nHRUe0Dm27A5jkkhFcbPlus1uOfoQw')
+                api_key = "AIzaSyClNy67EVJvJSVhe-Mo-xtWWg2jwN0CyGw"
                 
                 if not api_key:
                     self.send_response(500)
@@ -52,7 +52,7 @@ class handler(BaseHTTPRequestHandler):
                 # Prepare curl command for Gemini API
                 curl_command = [
                     'curl',
-                    f'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key={api_key}',
+                    f'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key={api_key}',
                     '-H', 'Content-Type: application/json',
                     '-d', json.dumps({
                         'contents': [{
