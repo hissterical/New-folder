@@ -13,21 +13,25 @@ https://your-app.vercel.app/?q=What is the capital of France?
 ## Local Testing
 
 1. Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
 2. Set your Gemini API key:
+
 ```bash
 $env:GEMINI_API_KEY="your-api-key-here"
 ```
 
 3. Run locally:
+
 ```bash
 python api/index.py
 ```
 
 4. Test it:
+
 ```
 http://localhost:5000/?q=Hello, how are you?
 ```
@@ -35,16 +39,19 @@ http://localhost:5000/?q=Hello, how are you?
 ## Deploying to Vercel
 
 1. Install Vercel CLI:
+
 ```bash
 npm install -g vercel
 ```
 
 2. Set your Gemini API key as a secret:
+
 ```bash
 vercel secrets add gemini_api_key "your-api-key-here"
 ```
 
 3. Deploy:
+
 ```bash
 vercel
 ```
