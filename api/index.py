@@ -52,7 +52,7 @@ class handler(BaseHTTPRequestHandler):
                 # Prepare curl command for Gemini API
                 curl_command = [
                     'curl',
-                    f'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}',
+                    f'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}',
                     '-H', 'Content-Type: application/json',
                     '-d', json.dumps({
                         'contents': [{
@@ -105,7 +105,7 @@ class handler(BaseHTTPRequestHandler):
                 response = {
                     'question': question,
                     'answer': answer,
-                    'model': 'gemini-pro'
+                    'model': 'gemini-1.5-flash'
                 }
                 self.wfile.write(json.dumps(response).encode())
                 
