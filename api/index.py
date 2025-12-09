@@ -1,100 +1,146 @@
-from flask import Flask, request, jsonify
+from http.server import BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
 import subprocess
 import json
 import os
 
-app = Flask(__name__)
-
-@app.route('/', methods=['GET'])
-def ask_llm():
-    # Get the question from query parameter
-    question = request.args.get('q', '')
-    
-    if not question:
-        return jsonify({
-            'error': 'No question provided',
-            'usage': 'Use /?q=your question here'
-        }), 400
-    
-    try:
-        # Using Gemini API via curl
-        api_key = "AIzaSyAw8nHRUe0Dm27A5jkkhFcbPlus1uOfoQw" # os.environ.get('GEMINI_API_KEY', '')
+class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        # Parse the URL
+        parsed_path = urlparse(self.path)
+        query_params = parse_qs(parsed_path.query)
         
-        if not api_key:
-            return jsonify({
-                'error': 'GEMINI_API_KEY not configured',
-                'message': 'Please set GEMINI_API_KEY environment variable'
-            }), 500
+        # Health check endpoint
+        if parsed_path.path == '/health':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'status': 'healthy'}).encode())
+            return
         
-        # Prepare curl command for Gemini API
-        curl_command = [
-            'curl',
-            f'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}',
-            '-H', 'Content-Type: application/json',
-            '-d', json.dumps({
-                'contents': [{
-                    'parts': [{
-                        'text': question
-                    }]
-                }]
-            })
-        ]
-        
-        # Execute curl command
-        result = subprocess.run(
-            curl_command,
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-        
-        if result.returncode != 0:
-            return jsonify({
-                'error': 'Curl command failed',
-                'details': result.stderr
-            }), 500
-        
-        # Parse the response
-        # Parse the response
-        response_data = json.loads(result.stdout)
-        
-        if 'error' in response_data:
-            return jsonify({
-                'error': 'API Error',
-                'details': response_data['error']
-            }), 500
-        
-        # Extract the answer from Gemini response
-        answer = response_data['candidates'][0]['content']['parts'][0]['text']
-        
-        return jsonify({
-            'question': question,
-            'answer': answer,
-            'model': 'gemini-pro'
-        })
-    except subprocess.TimeoutExpired:
-        return jsonify({
-            'error': 'Request timeout',
-            'message': 'The LLM request took too long'
-        }), 504
-        
-    except json.JSONDecodeError as e:
-        return jsonify({
-            'error': 'Failed to parse API response',
-            'details': str(e)
-        }), 500
-        
-    except Exception as e:
-        return jsonify({
-            'error': 'Internal server error',
-            'details': str(e)
-        }), 500
-
-@app.route('/health', methods=['GET'])
-def health():
-    return jsonify({'status': 'healthy'})
-
-# For Vercel
-def handler(request):
-    with app.request_context(request.environ):
-        return app.full_dispatch_request()
+        # Main endpoint
+        if parsed_path.path == '/':
+            # Get the question from query parameter
+            question = query_params.get('q', [''])[0]
+            
+            if not question:
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                response = {
+                    'error': 'No question provided',
+                    'usage': 'Use /?q=your question here'
+                }
+                self.wfile.write(json.dumps(response).encode())
+                return
+            
+            try:
+                # Using Gemini API via curl
+                api_key = os.environ.get('GEMINI_API_KEY', 'AIzaSyAw8nHRUe0Dm27A5jkkhFcbPlus1uOfoQw')
+                
+                if not api_key:
+                    self.send_response(500)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    response = {
+                        'error': 'GEMINI_API_KEY not configured',
+                        'message': 'Please set GEMINI_API_KEY environment variable'
+                    }
+                    self.wfile.write(json.dumps(response).encode())
+                    return
+                
+                # Prepare curl command for Gemini API
+                curl_command = [
+                    'curl',
+                    f'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}',
+                    '-H', 'Content-Type: application/json',
+                    '-d', json.dumps({
+                        'contents': [{
+                            'parts': [{
+                                'text': question
+                            }]
+                        }]
+                    })
+                ]
+                
+                # Execute curl command
+                result = subprocess.run(
+                    curl_command,
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                
+                if result.returncode != 0:
+                    self.send_response(500)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    response = {
+                        'error': 'Curl command failed',
+                        'details': result.stderr
+                    }
+                    self.wfile.write(json.dumps(response).encode())
+                    return
+                
+                # Parse the response
+                response_data = json.loads(result.stdout)
+                
+                if 'error' in response_data:
+                    self.send_response(500)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    response = {
+                        'error': 'API Error',
+                        'details': response_data['error']
+                    }
+                    self.wfile.write(json.dumps(response).encode())
+                    return
+                
+                # Extract the answer from Gemini response
+                answer = response_data['candidates'][0]['content']['parts'][0]['text']
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                response = {
+                    'question': question,
+                    'answer': answer,
+                    'model': 'gemini-pro'
+                }
+                self.wfile.write(json.dumps(response).encode())
+                
+            except subprocess.TimeoutExpired:
+                self.send_response(504)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                response = {
+                    'error': 'Request timeout',
+                    'message': 'The LLM request took too long'
+                }
+                self.wfile.write(json.dumps(response).encode())
+                
+            except json.JSONDecodeError as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                response = {
+                    'error': 'Failed to parse API response',
+                    'details': str(e)
+                }
+                self.wfile.write(json.dumps(response).encode())
+                
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                response = {
+                    'error': 'Internal server error',
+                    'details': str(e)
+                }
+                self.wfile.write(json.dumps(response).encode())
+        else:
+            self.send_response(404)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            response = {'error': 'Not found'}
+            self.wfile.write(json.dumps(response).encode())
