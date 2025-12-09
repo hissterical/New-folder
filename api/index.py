@@ -36,7 +36,7 @@ class handler(BaseHTTPRequestHandler):
             
             try:
                 # Using Gemini API via curl
-                api_key = "AIzaSyClNy67EVJvJSVhe-Mo-xtWWg2jwN0CyGw"
+                api_key = os.environ.get('GEMINI_API_KEY')
                 
                 if not api_key:
                     self.send_response(500)
